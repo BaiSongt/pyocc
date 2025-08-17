@@ -29,7 +29,7 @@
 ### 阶段汇总示例 (任务 5.3)
 
 - **目标**: 综合运用高级曲面和修复技术，创建一个有机的、复杂的模型。
-- **示例焦点 (`examples/phase_5_advanced_surfaces.py`)**: 
+- **示例焦点 (`examples/phase_5_advanced_surfaces.py`)**:
   1. 创建几条复杂的空间曲线（B样条）。
   2. 使用这些曲线作为边界或龙骨，通过放样或蒙皮（Lofting/Skinning）等方式构建一个复杂的曲面（如船体或飞机机翼）。
   3. 使用 `ShapeFix` 确保生成的几何体是水密的（watertight）。
@@ -61,7 +61,7 @@
 ### 阶段汇总示例 (任务 6.3)
 
 - **目标**: 构建一个微型的参数化CAD应用原型。
-- **示例焦点 (`examples/phase_6_parametric_model.py`)**: 
+- **示例焦点 (`examples/phase_6_parametric_model.py`)**:
   1. 创建一个OCAF文档。
   2. 在文档中定义多个参数属性（如 `width`, `height`, `depth`, `hole_radius`）。
   3. 创建一个函数，该函数依赖这些参数，执行“创建一个带中心孔的盒子”的逻辑，并将最终形状存入文档。
