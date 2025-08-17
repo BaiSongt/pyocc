@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
 
 """
 This file demonstrates the use of the `ShapeFix` package to repair a defective shape.
@@ -6,85 +6,82 @@ This file demonstrates the use of the `ShapeFix` package to repair a defective s
 
 It shows how to:
 # 它展示了如何：
-1. Intentionally create a defective shape (an open shell with a missing face).
-# 1. 故意创建一个有缺陷的形状（一个缺少一个面的开放壳体）。
-2. Show that standard tools fail to process it.
-# 2. 展示标准工具无法处理它。
-3. Use `ShapeFix_Solid` to automatically repair the defect and create a valid solid.
-# 3. 使用 `ShapeFix_Solid` 自动修复该缺陷并创建一个有效的实体。
-4. Verify the result with `BRepCheck_Analyzer`.
-# 4. 使用 `BRepCheck_Analyzer` 来验证结果。
+1. Intentionally create a defective shape (a closed shell with one face reversed).
+# 1. 故意创建一个有缺陷的形状（一个其中一个面被反转的闭合壳体）。
+2. Show that this results in an invalid solid.
+# 2. 展示这会导致一个无效的实体。
+3. Use `ShapeFix_Shell` to automatically repair the face orientation.
+# 3. 使用 `ShapeFix_Shell` 自动修复面的方向。
+4. Create a valid solid from the repaired shell.
+# 4. 从修复后的壳体创建一个有效的实体。
 """
 
 # --- Imports ---
 # --- 导入 ---
 from OCC.Core.BRepPrimAPI import BRepPrimAPI_MakeBox
-from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeSolid, BRepBuilderAPI_Sewing
-from OCC.Core.ShapeFix import ShapeFix_Solid
+from OCC.Core.BRepBuilderAPI import BRepBuilderAPI_MakeSolid
+from OCC.Core.ShapeFix import ShapeFix_Shell
 from OCC.Core.TopExp import TopExp_Explorer
-from OCC.Core.TopAbs import TopAbs_FACE, TopAbs_SOLID
-from OCC.Core.TopoDS import TopoDS_Shell, TopoDS_Compound, TopoDS_Builder
+from OCC.Core.TopAbs import TopAbs_FACE
+from OCC.Core.TopoDS import TopoDS_Shell, TopoDS_Builder
 from OCC.Core.BRepCheck import BRepCheck_Analyzer
 
 def repair_defective_shape():
     """
-    Creates a defective shell and repairs it into a solid.
-    # 创建一个有缺陷的壳体并将其修复成一个实体。
+    Creates a shell with a reversed face and repairs it.
+    # 创建一个带有反转面的壳体并将其修复。
     """
-    print("--- Repairing a Defective Shape with ShapeFix ---")
-    # --- 正在使用 ShapeFix 修复一个有缺陷的形状 ---
+    print("--- Repairing a Shape with a Reversed Face using ShapeFix ---")
+    # --- 正在使用 ShapeFix 修复一个带有反转面的形状 ---
 
-    # 1. Create a standard box.
-    # 1. 创建一个标准的盒子。
+    # 1. Create a standard box and extract its faces.
+    # 1. 创建一个标准的盒子并提取其所有面。
     the_box = BRepPrimAPI_MakeBox(100, 100, 100).Shape()
-
-    # 2. Intentionally create a defective shape by removing one face.
-    # 2. 通过移除一个面来故意创建一个有缺陷的形状。
     face_explorer = TopExp_Explorer(the_box, TopAbs_FACE)
+    list_of_faces = []
+    while face_explorer.More():
+        list_of_faces.append(face_explorer.Current())
+        face_explorer.Next()
+    
+    # 2. Intentionally create a defective shell by reversing one face.
+    # 2. 通过反转一个面来故意创建一个有缺陷的壳体。
+    list_of_faces[0].Reverse() # Reverse the first face
+    # # 反转第一个面
+
     builder = TopoDS_Builder()
     defective_shell = TopoDS_Shell()
     builder.MakeShell(defective_shell)
-
-    face_count = 0
-    while face_explorer.More():
-        a_face = face_explorer.Current()
-        if face_count < 5: # Add only the first 5 faces
-            # # 只添加前5个面
-            builder.Add(defective_shell, a_face)
-        face_count += 1
-        face_explorer.Next()
+    for a_face in list_of_faces:
+        builder.Add(defective_shell, a_face)
     
-    print("Step 1: Created a defective shell with 5 faces (one missing).")
-    # 步骤 1: 已创建一个有5个面（缺少一个）的有缺陷的壳体。
+    print("Step 1: Created a defective shell with one face reversed.")
+    # 步骤 1: 已创建一个其中一个面被反转的有缺陷的壳体。
 
-    # 3. Attempt to create a solid with the standard tool (this should fail).
-    # 3. 尝试使用标准工具创建实体（这应该会失败）。
+    # 3. Create a solid from the defective shell and verify it's invalid.
+    # 3. 从有缺陷的壳体创建实体并验证其无效。
     mk_solid = BRepBuilderAPI_MakeSolid(defective_shell)
-    a_solid = mk_solid.Solid()
-    # The resulting shape is not null, but it should be an invalid solid.
-    # # 生成的形状不为空，但它应该是一个无效的实体。
-    analyzer1 = BRepCheck_Analyzer(a_solid)
-    assert not analyzer1.IsValid(), "Standard MakeSolid should produce an invalid solid from an open shell."
-    print("Step 2: Confirmed that standard BRepBuilderAPI_MakeSolid produces an invalid solid.")
-    # 步骤 2: 已确认标准的 BRepBuilderAPI_MakeSolid 生成了一个无效的实体。
+    invalid_solid = mk_solid.Solid()
+    analyzer1 = BRepCheck_Analyzer(invalid_solid)
+    assert not analyzer1.IsValid(), "Solid with reversed face should be invalid."
+    print("Step 2: Confirmed that the solid built from the defective shell is invalid.")
+    # 步骤 2: 已确认从有缺陷的壳体构建的实体是无效的。
 
-    # 4. Use ShapeFix_Solid to repair the shell and create a solid.
-    # 4. 使用 ShapeFix_Solid 来修复壳体并创建实体。
-    # This tool can often infer the missing face to create a closed solid.
-    # # 这个工具通常可以推断出缺失的面来创建一个闭合的实体。
-    fixer = ShapeFix_Solid(a_solid)
+    # 4. Use ShapeFix_Shell to repair the face orientations.
+    # 4. 使用 ShapeFix_Shell 来修复面的方向。
+    fixer = ShapeFix_Shell(defective_shell)
     fixer.Perform()
-    repaired_solid = fixer.Solid()
-    print("Step 3: Used ShapeFix_Solid to attempt repair.")
-    # 步骤 3: 已使用 ShapeFix_Solid 尝试修复。
+    repaired_shell = fixer.Shell()
+    print("Step 3: Used ShapeFix_Shell to repair face orientations.")
+    # 步骤 3: 已使用 ShapeFix_Shell 修复面的方向。
 
-    # 5. Verification
-    # 5. 验证
-    assert not repaired_solid.IsNull(), "ShapeFix should have created a valid solid."
-    analyzer = BRepCheck_Analyzer(repaired_solid)
-    assert analyzer.IsValid(), "The repaired solid should be valid."
-    print("\nVerification successful: ShapeFix successfully repaired the shell into a valid solid.")
-    # 验证成功：ShapeFix 成功地将壳体修复成一个有效的实体。
+    # 5. Create a new solid from the REPAIRED shell and verify it's now valid.
+    # 5. 从被修复的壳体创建一个新实体并验证它现在是有效的。
+    mk_repaired_solid = BRepBuilderAPI_MakeSolid(repaired_shell)
+    valid_solid = mk_repaired_solid.Solid()
+    analyzer2 = BRepCheck_Analyzer(valid_solid)
+    assert analyzer2.IsValid(), "The solid from the repaired shell should be valid."
+    print("\nVerification successful: ShapeFix successfully repaired the shell, resulting in a valid solid.")
+    # 验证成功：ShapeFix 成功修复了壳体，并得到了一个有效的实体。
 
 if __name__ == '__main__':
     repair_defective_shape()
